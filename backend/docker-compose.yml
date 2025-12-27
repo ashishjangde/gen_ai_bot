@@ -1,6 +1,5 @@
 # Production Docker Compose
 services:
-  # PostgreSQL Database
   postgres:
     image: postgres:16-alpine
     container_name: prod_postgres
@@ -29,7 +28,7 @@ services:
     ports:
       - "8000:8000"
     environment:
-      - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
       - PYTHONUNBUFFERED=1
       - DEBUG=false
     depends_on:
@@ -37,15 +36,6 @@ services:
         condition: service_healthy
     networks:
       - backend_network
-    # Resource limits for production
-    deploy:
-      resources:
-        limits:
-          cpus: "2"
-          memory: 1G
-        reservations:
-          cpus: "0.5"
-          memory: 256M
 
 volumes:
   postgres_prod_data:

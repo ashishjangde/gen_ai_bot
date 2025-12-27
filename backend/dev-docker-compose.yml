@@ -1,4 +1,3 @@
-# Development Docker Compose - Hot reload enabled
 services:
   # PostgreSQL Database
   postgres:
@@ -34,15 +33,13 @@ services:
     ports:
       - "8000:8000"
     volumes:
-      # Mount source code for hot reload
       - .:/app
-      # Prevent overwriting installed packages
       - /app/.venv
+    env_file:
+      - .env
     environment:
-      - DATABASE_URL=postgresql://${POSTGRES_USER:-devuser}:${POSTGRES_PASSWORD:-devpassword}@postgres:5432/${POSTGRES_DB:-devdb}
+      - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
       - PYTHONUNBUFFERED=1
-      - DEBUG=true
-    # Override CMD for development with reload
     command:
       [
         "uv",
