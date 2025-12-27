@@ -1,0 +1,55 @@
+# Production Docker Compose
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:16-alpine
+    container_name: prod_postgres
+    restart: always
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - postgres_prod_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - backend_network
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
+    container_name: prod_backend
+    restart: always
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      - PYTHONUNBUFFERED=1
+      - DEBUG=false
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - backend_network
+    # Resource limits for production
+    deploy:
+      resources:
+        limits:
+          cpus: "2"
+          memory: 1G
+        reservations:
+          cpus: "0.5"
+          memory: 256M
+
+volumes:
+  postgres_prod_data:
+
+networks:
+  backend_network:
+    driver: bridge

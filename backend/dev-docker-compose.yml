@@ -1,0 +1,63 @@
+# Development Docker Compose - Hot reload enabled
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:16-alpine
+    container_name: dev_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-devuser}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-devpassword}
+      POSTGRES_DB: ${POSTGRES_DB:-devdb}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_dev_data:/var/lib/postgresql/data
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${POSTGRES_USER:-devuser} -d ${POSTGRES_DB:-devdb}",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # FastAPI Backend - Development mode with hot reload
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: builder # Use builder stage for dev
+    container_name: dev_backend
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    volumes:
+      # Mount source code for hot reload
+      - .:/app
+      # Prevent overwriting installed packages
+      - /app/.venv
+    environment:
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-devuser}:${POSTGRES_PASSWORD:-devpassword}@postgres:5432/${POSTGRES_DB:-devdb}
+      - PYTHONUNBUFFERED=1
+      - DEBUG=true
+    # Override CMD for development with reload
+    command:
+      [
+        "uv",
+        "run",
+        "uvicorn",
+        "main:app",
+        "--host",
+        "0.0.0.0",
+        "--port",
+        "8000",
+        "--reload",
+      ]
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  postgres_dev_data:
