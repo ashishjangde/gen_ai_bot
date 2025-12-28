@@ -3,7 +3,6 @@ from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError, ResponseValidationError
 from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
-
 from app.advices.base_response_handler import BaseResponseHandler
 from app.exceptions.exceptions import (
     InvalidCredentialsException,
