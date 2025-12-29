@@ -1,5 +1,4 @@
 services:
-  # PostgreSQL Database
   postgres:
     image: postgres:16-alpine
     container_name: dev_postgres
@@ -13,21 +12,16 @@ services:
     volumes:
       - postgres_dev_data:/var/lib/postgresql/data
     healthcheck:
-      test:
-        [
-          "CMD-SHELL",
-          "pg_isready -U ${POSTGRES_USER:-devuser} -d ${POSTGRES_DB:-devdb}",
-        ]
+      test: ["CMD-SHELL", "pg_isready -U $POSTGRES_USER -d $POSTGRES_DB"]
       interval: 10s
       timeout: 5s
       retries: 5
 
-  # FastAPI Backend - Development mode with hot reload
   backend:
     build:
       context: .
       dockerfile: Dockerfile
-      target: builder # Use builder stage for dev
+      target: builder
     container_name: dev_backend
     restart: unless-stopped
     ports:
@@ -38,8 +32,7 @@ services:
     env_file:
       - .env
     environment:
-      - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
-      - PYTHONUNBUFFERED=1
+      PYTHONUNBUFFERED: "1"
     command:
       [
         "uv",
@@ -55,6 +48,74 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      qdrant:
+        condition: service_started
+      valkey:
+        condition: service_started
+
+  qdrant:
+    image: qdrant/qdrant:v1.16.0
+    container_name: dev_qdrant
+    restart: unless-stopped
+    ports:
+      - "6333:6333"
+    volumes:
+      - qdrant_dev_data:/qdrant/storage
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:6333/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  valkey:
+    image: valkey/valkey:7.2
+    container_name: dev_valkey
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - valkey_dev_data:/data
+    healthcheck:
+      test: ["CMD", "valkey-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  rq-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: builder
+    container_name: dev_rq_worker
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      PYTHONUNBUFFERED: "1"
+    command:
+      [
+        "uv",
+        "run",
+        "rq",
+        "worker",
+        "--url",
+        "redis://valkey:6379/0",
+        "default",
+        "documents",
+        "memory",
+      ]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      valkey:
+        condition: service_started
+      qdrant:
+        condition: service_started
+    volumes:
+      - .:/app
+      - /app/.venv
 
 volumes:
   postgres_dev_data:
+  qdrant_dev_data:
+  valkey_dev_data:

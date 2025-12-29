@@ -8,6 +8,9 @@ from app.config.settings import settings
 from app.config.base import Base
 from app.modules.user_service.models.session_model import Session
 from app.modules.user_service.models.user_model import User
+from app.modules.chat_service.models.chat_session_model import ChatSession
+from app.modules.chat_service.models.chat_model import ChatMessage
+from app.modules.chat_service.models.chat_source_model import ChatSource
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

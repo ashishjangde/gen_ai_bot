@@ -1,4 +1,7 @@
+from app.exceptions.exceptions import ConflictException
 import re
+from uuid import UUID
+from pydantic import ConfigDict
 from pydantic import BaseModel, Field, field_validator, EmailStr
 from datetime import datetime
 
@@ -11,11 +14,10 @@ class RegisterSchema(BaseModel):
     @classmethod
     def validate_password(cls, v: str) -> str:
         if not re.match(r"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$", v):
-            raise ValueError("Password must contain at least one uppercase letter, one lowercase letter, one digit, and one special character")
+            raise ConflictException("Password must contain at least one uppercase letter, one lowercase letter, one digit, and one special character")
         return v
 
-from uuid import UUID
-from pydantic import ConfigDict
+
 
 class ReturnUserSchema(BaseModel):
     model_config = ConfigDict(from_attributes=True)
