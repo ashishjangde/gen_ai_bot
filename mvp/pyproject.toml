@@ -1,0 +1,32 @@
+[project]
+name = "mvp"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "alembic>=1.17.2",
+    "asyncpg>=0.31.0",
+    "boto3>=1.42.17",
+    "fastapi[standard]>=0.127.1",
+    "fastexcel>=0.18.0",
+    "greenlet>=3.3.0",
+    "httpx>=0.28.1",
+    "langchain-community>=0.4.1",
+    "langchain-groq>=1.1.1",
+    "langchain-huggingface>=1.2.0",
+    "langchain-qdrant>=1.1.0",
+    "langchain-text-splitters>=1.1.0",
+    "langgraph>=1.0.5",
+    "mem0ai>=1.0.1",
+    "openpyxl>=3.1.5",
+    "polars>=1.36.1",
+    "pydantic-settings>=2.12.0",
+    "pypdf>=6.5.0",
+    "qdrant-client>=1.16.2",
+    "rq>=2.6.1",
+    "sentence-transformers>=5.2.0",
+    "sqlalchemy>=2.0.45",
+    "tavily-python>=0.7.17",
+    "unstructured>=0.18.21",
+]
