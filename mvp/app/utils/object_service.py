@@ -3,7 +3,7 @@ from typing import Optional
 import httpx
 from boto3 import client
 from functools import lru_cache
-from mvp.config.settings import settings
+from mvp.app.config.settings import settings
 
 logger = logging.getLogger(__name__)
 
@@ -16,7 +16,7 @@ def _get_s3_client():
         region_name=settings.supabase_region,
         endpoint_url=settings.supabase_endpoint,
         aws_access_key_id=settings.supabase_access_key_id,
-        aws_secret_access_key=settings.supabase_secret_key_secret,
+        aws_secret_access_key=settings.supabase_access_key_secret,
     )
 
 

@@ -1,40 +1,24 @@
-"""
-Production-Ready LangGraph Chatbot
-===================================
-
-Architecture:
-- One class (ChatGraph) contains everything
-- Internal nodes are private (_methods)
-- Only one public function exposed: run()
-
-Flow: START → _preprocess → _chatbot → _postprocess → END
-"""
-
-from config.settings import settings
+from mvp.app.config.settings import settings
+from mvp.app.utils.vector_service import VectorService
 import logging
 from typing import Any
 from langgraph.graph import StateGraph, START, END
 from typing_extensions import TypedDict, Annotated
 from langgraph.graph.message import add_messages
-from langchain_groq import ChatGroq
 
 
 logger = logging.getLogger(__name__)
 
 
-# =============================================================================
-# STATE
-# =============================================================================
+
 class State(TypedDict):
     """State that flows through the graph."""
     messages: Annotated[list, add_messages]
     user_id: str
     session_id: str
+    context: str  # Retrieved documents content
 
-llm = ChatGroq(
-    model="openai/gpt-oss-120b",
-    api_key=settings
-)
+
 class ChatGraph:
     """
     A self-contained LangGraph chatbot.
@@ -71,40 +55,75 @@ class ChatGraph:
         self.llm = llm
         self.system_prompt = system_prompt
         self.fallback_message = fallback_message
+        self.vector_service = VectorService()  # Initialize vector service
         self._app = self._build_graph()
     
     # -------------------------------------------------------------------------
     # PRIVATE NODE: Preprocess
     # -------------------------------------------------------------------------
     async def _preprocess(self, state: State) -> dict:
-        """Add system prompt to messages."""
-        from langchain_core.messages import SystemMessage
-        
-        messages = state["messages"]
-        
-        # Check if first message is already a system message
-        # Handle both dict and LangChain message objects
-        if messages:
-            first_msg = messages[0]
-            is_system = (
-                getattr(first_msg, "type", None) == "system" or
-                (isinstance(first_msg, dict) and first_msg.get("role") == "system")
+        """Add system prompt to messages. (Placeholder, mostly)"""
+        return {}  # System prompt injected in _chatbot using retrieved context is better
+
+    # -------------------------------------------------------------------------
+    # PRIVATE NODE: Retrieve (RAG)
+    # -------------------------------------------------------------------------
+    async def _retrieve(self, state: State) -> dict:
+        """Fetch relevant documents for the user."""
+        try:
+            user_id = state.get("user_id")
+            session_id = state.get("session_id")
+            messages = state["messages"]
+            
+            if not messages:
+                return {"context": ""}
+                
+            last_message = messages[-1].content
+            if not isinstance(last_message, str):
+                last_message = str(last_message)
+
+            await self.vector_service.connect() # Ensure connection
+            results = await self.vector_service.search(
+                query=last_message,
+                limit=3,
+                user_id=user_id,
+                # session_id=session_id  # Search user-wide docs, not just session-specific
             )
-            if is_system:
-                return {}  # Already has system prompt
-        
-        # Add system prompt
-        return {"messages": [SystemMessage(content=self.system_prompt)]}
+            # await self.vector_service.close() # Don't close here if we want potential reuse, or close if stateless.
+            # Ideally VectorService should be persistent at app level.
+            # For this tool, we connect/close or keep open. 
+            # Let's keep open and rely on app shutdown to close? 
+            # Or just close effectively.
+            await self.vector_service.close()
+
+            logger.info(f"Retrieval | user={user_id} | query='{last_message}' | found={len(results)}")
+
+            if not results:
+                return {"context": ""}
+            
+            # Format context
+            context_text = "\n\n".join(
+                [f"Source: {r['metadata'].get('filename', 'unknown')}\nContent: {r['content']}" for r in results]
+            )
+            return {"context": context_text}
+
+        except Exception as e:
+            logger.error(f"Retrieval error: {e}")
+            return {"context": ""}
     
-    # -------------------------------------------------------------------------
-    # PRIVATE NODE: Chatbot (calls LLM)
-    # -------------------------------------------------------------------------
     async def _chatbot(self, state: State) -> dict:
-        """Call the LLM and return response."""
+        """Call the LLM with context."""
         user_id = state.get("user_id", "unknown")
+        context = state.get("context", "")
         
         try:
-            messages = state["messages"]
+            # Construct System Prompt with Context
+            final_system_prompt = self.system_prompt
+            if context:
+                final_system_prompt += f"\n\nRELEVANT CONTEXT (Use this to answer):\n{context}"
+            
+            from langchain_core.messages import SystemMessage
+            messages = [SystemMessage(content=final_system_prompt)] + state["messages"]
             
             if hasattr(self.llm, "ainvoke"):
                 response = await self.llm.ainvoke(messages)
@@ -118,9 +137,6 @@ class ChatGraph:
             logger.error(f"LLM error | user={user_id} | {e}")
             return {"messages": [{"role": "assistant", "content": self.fallback_message}]}
     
-    # -------------------------------------------------------------------------
-    # PRIVATE NODE: Postprocess
-    # -------------------------------------------------------------------------
     async def _postprocess(self, state: State) -> dict:
         """Log the response (add your logic here)."""
         messages = state["messages"]
@@ -128,29 +144,24 @@ class ChatGraph:
             logger.debug(f"Response generated: {messages[-1]}")
         return {}  # No state changes
     
-    # -------------------------------------------------------------------------
-    # PRIVATE: Build the graph
-    # -------------------------------------------------------------------------
     def _build_graph(self):
         """Wire all nodes together."""
         graph = StateGraph(State)
         
-        # Add private nodes
         graph.add_node("preprocess", self._preprocess)
+        graph.add_node("retrieve", self._retrieve)
         graph.add_node("chatbot", self._chatbot)
         graph.add_node("postprocess", self._postprocess)
         
-        # Define flow
         graph.add_edge(START, "preprocess")
-        graph.add_edge("preprocess", "chatbot")
+        graph.add_edge("preprocess", "retrieve")
+        graph.add_edge("retrieve", "chatbot")
         graph.add_edge("chatbot", "postprocess")
         graph.add_edge("postprocess", END)
         
         return graph.compile()
     
-    # -------------------------------------------------------------------------
-    # PUBLIC: The only exposed function
-    # -------------------------------------------------------------------------
+
     async def run(self, message: str, user_id: str, session_id: str) -> str:
         """
         Run the chatbot with a user message.
@@ -184,10 +195,16 @@ if __name__ == "__main__":
     
     logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
     
-    # Mock LLM
+    # Mock LLM that just echoes the context it sees
     class MockLLM:
         async def ainvoke(self, messages):
-            return {"role": "assistant", "content": "Hello! I'm here to help."}
+             # Find system message content to see if context was injected
+            system_msg = next((m.content for m in messages if hasattr(m, "type") and m.type == "system" or (isinstance(m, dict) and m.get("role") == "system")), "")
+            
+            if "RELEVANT CONTEXT" in str(system_msg):
+                return {"role": "assistant", "content": f"I found context! System Prompt length: {len(str(system_msg))}"}
+            else:
+                return {"role": "assistant", "content": "No context found in system prompt."}
     
     async def main():
         # Create the chat graph
@@ -196,13 +213,23 @@ if __name__ == "__main__":
             system_prompt="You are a friendly assistant."
         )
         
-        # Use the ONE public function
+        # We need a user who HAS documents. 
+        # Assuming 'user_123' has 'test.txt' from vector_service.py test run.
+        print("\n--- Running Chat (User 123) ---")
         response = await chat.run(
-            message="Hi there!",
-            user_id="user_123",
+            message="memory test", # Should match 'test.txt' content
+            user_id="user_123", # Matches user_id from vector_service test
             session_id="session_456"
         )
-        
-        print(f"\n✅ Response: {response}")
+        print(f"✅ Response: {response}")
+
+        print("\n--- Running Chat (User 999 - No Context) ---")
+        response_empty = await chat.run(
+            message="memory test",
+            user_id="user_999",
+            session_id="session_456"
+        )
+        print(f"✅ Response: {response_empty}")
     
     asyncio.run(main())
+

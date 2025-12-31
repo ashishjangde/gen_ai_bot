@@ -14,10 +14,7 @@ class DocProcessor:
     """
     Async document processor that loads bytes directly, splits them into chunks, 
     and prepares them for vectorization. 
-    
-    Zero disk usage: uses io.BytesIO and in-memory parsers.
     """
-    
     
     def __init__(self):
         # We only need splitting here. Embedding happens in the vector store.
