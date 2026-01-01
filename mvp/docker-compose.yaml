@@ -1,0 +1,80 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: dev_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-system}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-manager}
+      POSTGRES_DB: ${POSTGRES_DB:-gen_ai}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_dev_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U system -d gen_ai"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  qdrant:
+    image: qdrant/qdrant:v1.16.0
+    container_name: dev_qdrant
+    restart: unless-stopped
+    ports:
+      - "6333:6333"
+    volumes:
+      - qdrant_dev_data:/qdrant/storage
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:6333/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  valkey:
+    image: valkey/valkey:7.2
+    container_name: dev_valkey
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - valkey_dev_data:/data
+    healthcheck:
+      test: ["CMD", "valkey-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # RQ Worker for background jobs (scalable - run multiple instances)
+  worker:
+    build: .
+    container_name: dev_worker
+    working_dir: /app
+    command: /app/mvp/.venv/bin/python -m mvp.app.queues.worker
+    depends_on:
+      valkey:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      qdrant:
+        condition: service_healthy
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://system:manager@postgres:5432/gen_ai
+      - VALKEY_URL=redis://valkey:6379
+      - QDRANT_URL=http://qdrant:6333
+      - LLM_API_KEY=${LLM_API_KEY:-}
+      - TAVILY_API_KEY=${TAVILY_API_KEY:-}
+      - SUPABASE_ACCESS_KEY_ID=${SUPABASE_ACCESS_KEY_ID:-}
+      - SUPABASE_ACCESS_KEY_SECRET=${SUPABASE_ACCESS_KEY_SECRET:-}
+      - SUPABASE_ENDPOINT=${SUPABASE_ENDPOINT:-}
+      - SUPABASE_REGION=${SUPABASE_REGION:-}
+    restart: unless-stopped
+    # Scale workers: docker compose up --scale worker=3
+    deploy:
+      replicas: 1
+
+
+volumes:
+  postgres_dev_data:
+  qdrant_dev_data:
+  valkey_dev_data:

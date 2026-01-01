@@ -29,4 +29,6 @@ dependencies = [
     "sqlalchemy>=2.0.45",
     "tavily-python>=0.7.17",
     "unstructured>=0.18.21",
+    "valkey>=6.1.1",
+    "yfinance>=1.0",
 ]

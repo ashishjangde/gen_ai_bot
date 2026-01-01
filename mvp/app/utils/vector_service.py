@@ -3,9 +3,9 @@ from typing import List, Optional
 from langchain_qdrant import QdrantVectorStore
 from langchain_huggingface import HuggingFaceEmbeddings
 from qdrant_client import QdrantClient, models
-from app.config.settings import settings
-from app.utils.object_service import ObjectService
-from app.utils.doc_processor import DocProcessor
+from mvp.app.config.settings import settings
+from mvp.app.utils.object_service import ObjectService
+from mvp.app.utils.doc_processor import DocProcessor
 
 logger = logging.getLogger(__name__)
 
@@ -60,6 +60,18 @@ class VectorService:
         """Shutdown: close object storage connection."""
         await self.object_service.close()
         logger.info("VectorService closed")
+
+    async def add_texts(self, texts: List[str], metadatas: List[dict]) -> bool:
+        """
+        Directly add texts to vector store.
+        """
+        try:
+            await self.vector_store.aadd_texts(texts=texts, metadatas=metadatas)
+            logger.info(f"Added {len(texts)} texts to {self.collection_name}")
+            return True
+        except Exception as e:
+            logger.error(f"Failed to add texts: {e}")
+            return False
 
     async def ingest_file(self, file_key: str, user_id: Optional[str] = None, session_id: Optional[str] = None) -> bool:
         """
