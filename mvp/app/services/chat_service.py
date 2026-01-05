@@ -306,30 +306,41 @@ class ChatService:
             extraction = await self._main_llm.ainvoke([HumanMessage(content=prompt)])
             ticker_symbol = extraction.content.strip()
             
-            if "NONE" in ticker_symbol or len(ticker_symbol) > 10:
+            # Removed length check to allow "TCS.NS, INFY.NS"
+            if "NONE" in ticker_symbol:
                 logger.warning(f"Could not extract ticker from: {content}")
                 return {"tool_results": state.get("tool_results", {})}
                 
-            # 2. Fetch data via yfinance (async safe)
-            logger.info(f"Fetching finance data for: {ticker_symbol}")
+            # 2. Check Cache
+            cache_key = f"cache:finance:{ticker_symbol}"
+            cached_data = await self._memory.get_cache(cache_key)
             
-            def fetch_stock():
-                ticker = yf.Ticker(ticker_symbol)
-                history = ticker.history(period="1d")
-                info = ticker.info
-                price = history['Close'].iloc[-1] if not history.empty else info.get('currentPrice', 'N/A')
-                currency = info.get('currency', 'USD')
-                name = info.get('longName', ticker_symbol)
-                return {
-                    "symbol": ticker_symbol,
-                    "price": price,
-                    "currency": currency,
-                    "name": name,
-                    "full_info": json.dumps(info)[:500] + "..." # Truncate for context
-                }
-            
-            stock_data = await asyncio.to_thread(fetch_stock)
-            
+            if cached_data:
+                logger.info(f"Finance cache hit for: {ticker_symbol}")
+                stock_data = json.loads(cached_data)
+            else:
+                # 3. Fetch data via yfinance (if not in cache)
+                logger.info(f"Fetching finance data for: {ticker_symbol}")
+                
+                def fetch_stock():
+                    ticker = yf.Ticker(ticker_symbol)
+                    history = ticker.history(period="1d")
+                    info = ticker.info
+                    price = history['Close'].iloc[-1] if not history.empty else info.get('currentPrice', 'N/A')
+                    currency = info.get('currency', 'USD')
+                    name = info.get('longName', ticker_symbol)
+                    return {
+                        "symbol": ticker_symbol,
+                        "price": price,
+                        "currency": currency,
+                        "name": name,
+                        "full_info": json.dumps(info)[:500] + "..."
+                    }
+                
+                # Fetch and Cache
+                stock_data = await asyncio.to_thread(fetch_stock)
+                await self._memory.set_cache(cache_key, json.dumps(stock_data), ttl=300)
+
             current_results = state.get("tool_results", {})
             current_results["finance"] = [{
                 "content": f"Live Data for {stock_data['name']} ({stock_data['symbol']}): Price = {stock_data['price']} {stock_data['currency']}",
@@ -505,34 +516,11 @@ class ChatService:
                 await self._memory.add_ltm(user_id, user_message)
             
             # 4. Vector History (Qdrant)
-            if self._history:
-                import datetime
-                timestamp = datetime.datetime.utcnow().isoformat()
-                
-                to_embed = []
-                metadatas = []
-                
-                if user_message:
-                    to_embed.append(user_message)
-                    metadatas.append({
-                        "user_id": user_id, 
-                        "session_id": session_id, 
-                        "role": "user",
-                        "timestamp": timestamp
-                    })
-                
-                if ai_response:
-                    to_embed.append(ai_response)
-                    metadatas.append({
-                        "user_id": user_id, 
-                        "session_id": session_id, 
-                        "role": "assistant", 
-                        "timestamp": timestamp,
-                        "sources": json.dumps(sources) if sources else "[]"
-                    })
-                
-                if to_embed:
-                    await self._history.add_texts(to_embed, metadatas)
+            # DISABLED per user request: "Store LTM only". 
+            # We skip saving every single message to Qdrant to keep vector store clean.
+            # if self._history:
+            #    ... (Logic removed for optimization)
+            pass
                     
             logger.info(f"Background persistence complete for session {session_id}")
             

@@ -7,13 +7,17 @@ WORKDIR /app
 RUN pip install uv
 
 # Copy the entire mvp directory
-COPY . ./mvp/
+# Copy only dependency files first to leverage Docker cache
+COPY pyproject.toml uv.lock ./mvp/
 
-# Change to mvp directory for uv sync
+# Change to mvp directory
 WORKDIR /app/mvp
 
-# Install dependencies
+# Install dependencies (This layer will be cached unless lockfile changes)
 RUN uv sync --frozen --no-dev
+
+# Copy the rest of the application
+COPY . /app/mvp/
 
 # Set Python path to /app so 'mvp.app...' imports work
 ENV PYTHONPATH=/app

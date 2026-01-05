@@ -173,6 +173,19 @@ class MemoryService:
         
         key = self._summary_key(session_id)
         await self._valkey.set(key, summary, ex=self.stm_ttl)
+        
+    # =========================================================================
+    # Generic Cache (Optimization)
+    # =========================================================================
+    async def get_cache(self, key: str) -> Optional[str]:
+        """Get a value from generic cache."""
+        if not self._valkey: return None
+        return await self._valkey.get(key)
+        
+    async def set_cache(self, key: str, value: str, ttl: int = 300):
+        """Set a value in generic cache with TTL (default 5 mins)."""
+        if not self._valkey: return
+        await self._valkey.set(key, value, ex=ttl)
     
     # =========================================================================
     # LTM: Long-Term Memory (Mem0)
@@ -222,9 +235,7 @@ class MemoryService:
             return []
 
 
-# =============================================================================
-# Factory function for dependency injection
-# =============================================================================
+
 _memory_service: Optional[MemoryService] = None
 
 
