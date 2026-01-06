@@ -3,7 +3,7 @@ from langchain_huggingface.embeddings.huggingface import HuggingFaceEmbeddings
 import logging
 from langchain_qdrant import QdrantVectorStore
 from app.modules.chat_service.utils.doc_processor import DocProcessor
-from app.modules.chat_service.utils.object_service import ObjectService
+from app.modules.utils.object_service import ObjectService
 from qdrant_client import QdrantClient , models
 from app.config.settings import settings
 
