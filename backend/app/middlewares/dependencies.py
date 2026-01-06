@@ -30,15 +30,11 @@ async def get_access_token(
     In production, only cookies work.
     In development, both cookies and bearer tokens work.
     """
-    # Try cookie first (always works)
     if cookie_token:
         return cookie_token
-    
-    # Try bearer token (only in development)
     if authorization and settings.env != "production":
         if authorization.startswith("Bearer "):
-            return authorization[7:]  # Remove "Bearer " prefix
-    
+            return authorization[7:]
     raise UnauthorizedAccessException("Not authenticated")
 
 
