@@ -16,9 +16,6 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "GroqChat",
   description: "Chat with LLM",
-  icons: {
-    icon: "/favicon.ico",
-  },
 };
 
 export default function RootLayout({
