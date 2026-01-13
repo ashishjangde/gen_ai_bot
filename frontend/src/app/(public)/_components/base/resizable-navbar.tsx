@@ -73,7 +73,7 @@ export const Navbar = ({ children, className }: NavbarProps) => {
     <motion.div
       ref={ref}
       // IMPORTANT: Change this to class of `fixed` if you want the navbar to be fixed
-      className={cn("fixed inset-x-0 top-4 z-50 w-full group", visible && "navbar-visible", className)}
+      className={cn("fixed inset-x-0 top-0 z-50 w-full group", visible && "navbar-visible", className)}
     >
       {React.Children.map(children, (child) =>
         React.isValidElement(child)
@@ -91,11 +91,11 @@ export const NavBody = ({ children, className, visible }: NavBodyProps) => {
   return (
     <motion.div
       animate={{
-        backdropFilter: visible ? "blur(10px)" : "none",
+        backdropFilter: "none",
         boxShadow: visible
           ? "0 0 24px rgba(34, 42, 53, 0.06), 0 1px 1px rgba(0, 0, 0, 0.05), 0 0 0 1px rgba(34, 42, 53, 0.04), 0 0 4px rgba(34, 42, 53, 0.08), 0 16px 68px rgba(47, 48, 55, 0.05), 0 1px 0 rgba(255, 255, 255, 0.1) inset"
           : "none",
-        width: visible ? "40%" : "100%",
+        width: visible ? "90%" : "100%",
         y: visible ? 20 : 0,
       }}
       transition={{
@@ -107,8 +107,8 @@ export const NavBody = ({ children, className, visible }: NavBodyProps) => {
         minWidth: "800px",
       }}
       className={cn(
-        "relative z-60 mx-auto hidden w-full max-w-7xl flex-row items-center justify-between self-start rounded-full bg-transparent px-4 py-2 lg:flex dark:bg-transparent",
-        visible && "bg-background/80 backdrop-blur-sm",
+        "relative z-60 mx-auto hidden w-full max-w-[95%] flex-row items-center justify-between self-start rounded-xl px-4 py-3.5 lg:flex transition-colors duration-200 border border-transparent",
+        visible ? "bg-background/90 shadow-lg" : "bg-transparent dark:bg-transparent",
         className,
       )}
     >
@@ -153,7 +153,7 @@ export const MobileNav = ({ children, className, visible }: MobileNavProps) => {
   return (
     <motion.div
       animate={{
-        backdropFilter: visible ? "blur(10px)" : "none",
+        backdropFilter: "none",
         boxShadow: visible
           ? "0 0 24px rgba(34, 42, 53, 0.06), 0 1px 1px rgba(0, 0, 0, 0.05), 0 0 0 1px rgba(34, 42, 53, 0.04), 0 0 4px rgba(34, 42, 53, 0.08), 0 16px 68px rgba(47, 48, 55, 0.05), 0 1px 0 rgba(255, 255, 255, 0.1) inset"
           : "none",
@@ -169,8 +169,8 @@ export const MobileNav = ({ children, className, visible }: MobileNavProps) => {
         damping: 50,
       }}
       className={cn(
-        "relative z-50 mx-auto flex w-full max-w-[calc(100vw-2rem)] flex-col items-center justify-between bg-transparent px-0 py-2 lg:hidden",
-        visible && "bg-background/80 backdrop-blur-md",
+        "relative z-50 mx-auto flex w-full max-w-[calc(100vw-2rem)] flex-col items-center justify-between px-0 py-2 lg:hidden transition-colors duration-200 border border-transparent",
+        visible ? "bg-background/90 shadow-lg" : "bg-transparent dark:bg-transparent",
         className,
       )}
     >
@@ -243,10 +243,10 @@ export const NavbarLogo = () => {
       <img
         src="./logo.svg"
         alt="logo"
-        width={30}
-        height={30}
+        width={35}
+        height={35}
       />
-      <span className="font-bold text-xl text-white group-[.navbar-visible]:text-black dark:text-white dark:group-[.navbar-visible]:text-white">GroqChat</span>
+      <span className="font-bold text-2xl text-black dark:text-white">GroqChat</span>
     </a>
   );
 };
@@ -267,7 +267,7 @@ export const NavbarButton = ({
   [key: string]: any;
 }) => {
   const baseStyles =
-    "px-4 py-1 rounded-xl font-bold relative cursor-pointer hover:-translate-y-0.5 transition duration-200 inline-block text-center";
+    "px-4 py-2 text-sm rounded-md font-bold relative cursor-pointer hover:-translate-y-0.5 transition duration-200 inline-block text-center";
 
   const variantStyles = {
     primary:
