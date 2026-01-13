@@ -5,7 +5,6 @@ from functools import lru_cache
 import httpx
 from boto3 import client
 from botocore.exceptions import ClientError
-
 from app.config.settings import settings
 
 logger = logging.getLogger(__name__)
@@ -36,7 +35,7 @@ class ObjectService:
 
     async def connect(self):
         if self._http is None:
-            self._http = httpx.AsyncClient(timeout=httpx.Timeout(None))
+            self._http = httpx.AsyncClient(timeout=httpx.Timeout(30.0))
             logger.info("ObjectService connected")
 
     async def close(self):
@@ -161,34 +160,6 @@ class ObjectService:
         except ClientError:
             return False
 
-    async def list(self, prefix: str = "") -> List[str]:
-        """
-        Paginated list (safe for large buckets).
-        """
-        keys: List[str] = []
-        continuation: Optional[str] = None
-
-        try:
-            while True:
-                response = await asyncio.to_thread(
-                    self._s3.list_objects_v2,
-                    Bucket=self.bucket,
-                    Prefix=prefix,
-                    ContinuationToken=continuation,
-                )
-
-                for obj in response.get("Contents", []):
-                    keys.append(obj["Key"])
-
-                if not response.get("IsTruncated"):
-                    break
-
-                continuation = response.get("NextContinuationToken")
-
-            return keys
-        except Exception:
-            logger.exception("List failed")
-            return []
 
     def get_url(self, key: str, expires_in: int = 3600) -> str:
         return self._presigned_get(key, expires_in)

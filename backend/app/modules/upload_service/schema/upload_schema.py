@@ -3,7 +3,7 @@ from pydantic import BaseModel , Field
 
 class UploadMeta(BaseModel):
     file_name: str = Field(... , examples=["file_name"])
-    user_id: str = Field(... , examples=["user_id"])
+    user_id: str | None = Field(default=None , examples=["user_id"])
 
 
 class UploadFileResponse(BaseModel):

@@ -1,6 +1,6 @@
 from uuid import UUID
-from fastapi import Depends, Header
-from fastapi.security import APIKeyCookie, HTTPBearer
+from fastapi import Depends
+from fastapi.security import APIKeyCookie, HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel
 from app.modules.user_service.utils.auth_utils import JWTUtils
 from app.exceptions.exceptions import UnauthorizedAccessException
@@ -19,8 +19,8 @@ class CurrentUser(BaseModel):
 
 
 async def get_access_token(
-    cookie_token: str = Depends(access_token_cookie),
-    authorization: str = Header(None, alias="Authorization"),
+    cookie_token: str | None = Depends(access_token_cookie),
+    bearer_token: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
 ) -> str:
     """
     Get access token from either:
@@ -32,9 +32,10 @@ async def get_access_token(
     """
     if cookie_token:
         return cookie_token
-    if authorization and settings.env != "production":
-        if authorization.startswith("Bearer "):
-            return authorization[7:]
+    
+    if bearer_token and settings.env != "production":
+        return bearer_token.credentials
+            
     raise UnauthorizedAccessException("Not authenticated")
 
 

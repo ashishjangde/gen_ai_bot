@@ -2,8 +2,18 @@ from datetime import UTC, datetime, timedelta
 from jose import JWTError, jwt
 from fastapi import Response
 from app.config.settings import settings
+from pydantic import BaseModel
 
 
+class AcessTokenPayload(BaseModel):
+    sub: str
+    email: str
+    name: str
+
+class RefreshTokenPayload(BaseModel):
+    sub: str
+
+    
 class JWTUtils:
     REFRESH_TOKEN_SECRET_KEY = settings.refresh_token_secret_key
     ACCESS_TOKEN_SECRET_KEY = settings.access_token_secret_key

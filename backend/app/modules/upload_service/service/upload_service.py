@@ -13,9 +13,9 @@ class UploadService:
         while chunk := await file.read(chunk_size):
             yield chunk
 
-    async def upload_file(self, file: UploadFile, meta: UploadMeta) -> UploadFileResponse:
+    async def upload_file(self, file: UploadFile, meta: UploadMeta , user_id: str) -> UploadFileResponse:
         file_id = str(uuid.uuid4())
-        key = f"{meta.user_id}/{file_id}/{meta.file_name}"
+        key = f"{user_id}/{file_id}/{meta.file_name}"
         
         await self.object_service.upload_stream(
             stream=self._file_iterator(file),
@@ -28,12 +28,17 @@ class UploadService:
         return UploadFileResponse(
             file_id=file_id,
             file_name=meta.file_name,
-            user_id=meta.user_id,
+            user_id=user_id,
             file_url=key,
             presigned_url=presigned_url
         )
 
 
 
-def get_upload_service() -> UploadService:
-    return UploadService()
+async def get_upload_service() -> AsyncGenerator[UploadService, None]:
+    service = UploadService()
+    await service.object_service.connect()
+    try:
+        yield service
+    finally:
+        await service.object_service.close()

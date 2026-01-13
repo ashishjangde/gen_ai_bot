@@ -32,7 +32,6 @@ All endpoints require JWT authentication. Use `/api/v1/auth/login` to get tokens
     docs_url="/docs",
     redoc_url="/redoc",
     openapi_url="/openapi.json",
-    lifespan=lifespan,
     contact={
         "name": "Ashish Jangde",
         "url": "https://github.com/ashishjangde",
