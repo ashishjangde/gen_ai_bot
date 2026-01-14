@@ -1,6 +1,6 @@
 import asyncio
 import logging
-from typing import Optional, AsyncIterator, List
+from typing import Optional, AsyncIterator, List, AsyncGenerator
 from functools import lru_cache
 import httpx
 from boto3 import client
@@ -163,3 +163,12 @@ class ObjectService:
 
     def get_url(self, key: str, expires_in: int = 3600) -> str:
         return self._presigned_get(key, expires_in)
+
+async def get_object_service() -> AsyncGenerator[ObjectService, None]:
+    object_service = ObjectService()
+    await object_service.connect()
+    try:
+        yield object_service
+    finally:
+        await object_service.close()
+    

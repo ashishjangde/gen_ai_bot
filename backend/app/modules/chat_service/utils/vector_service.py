@@ -13,9 +13,9 @@ logger = logging.getLogger(__name__)
 class VectorService:
     def __init__(self, collection_name: str):
         self.collection_name = collection_name,
-        self.object_service = ObjectService(),
-        self.doc_processor = DocProcessor()
-        self.embedder = HuggingFaceEmbeddings(
+        self.object_service : ObjectService = ObjectService(),
+        self.doc_processor : DocProcessor = DocProcessor()
+        self.embedder : HuggingFaceEmbeddings = HuggingFaceEmbeddings(
             model_name="sentence-transformers/all-MiniLM-L6-v2"
         )
         self._client = QdrantClient(
@@ -54,7 +54,7 @@ class VectorService:
     
     async def ingest_file(self, file_key: str, user_id: Optional[str] = None, session_id: Optional[str] = None) -> bool:
         try:
-            file_bytes = await self.object_service.get(file_key)
+            file_bytes = await self.object_service.get_bytes(file_key)
             if not file_bytes:
                 logger.error(f"File not found: {file_key}")
                 return False
