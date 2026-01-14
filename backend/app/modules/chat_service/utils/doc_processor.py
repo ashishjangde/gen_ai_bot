@@ -29,12 +29,12 @@ class DocProcessor:
             "txt": self._process_text,
         }
 
-        async def process(self , doc_content : bytes , file_type : str ) -> List[Document]:
-            file_type = file_type.lower().strip(".").replace("application/", "")
-            handler = self.DOCS_TYPES.get(file_type)
-            if not handler:
-                logger.warning(f"Unknown file type '{file_type}', falling back to text processing")
-                handler = self._process_text
+    async def process(self , doc_content : bytes , file_type : str ) -> List[Document]:
+        file_type = file_type.lower().strip(".").replace("application/", "")
+        handler = self.DOCS_TYPES.get(file_type)
+        if not handler:
+            logger.warning(f"Unknown file type '{file_type}', falling back to text processing")
+            handler = self._process_text
             
             try:
                 logger.info(f"Processing {file_type} document (in-memory)...")
@@ -45,51 +45,51 @@ class DocProcessor:
                 logger.error(f"Failed to embed {file_type}: {e}")
                 return []
         
-        def _process_pdf(self, content: bytes) -> List[Document]:
-            """Extract text from PDF using pypdf (streams)."""
-            text = ""
-            try:
-                pdf = PdfReader(io.BytesIO(content))
-                for page in pdf.pages:
-                    text += page.extract_text() + "\n"
-            except Exception as e:
-                logger.error(f"Error parsing PDF: {e}")
-                return []
-                
+    def _process_pdf(self, content: bytes) -> List[Document]:
+        """Extract text from PDF using pypdf (streams)."""
+        text = ""
+        try:
+            pdf = PdfReader(io.BytesIO(content))
+            for page in pdf.pages:
+                text += page.extract_text() + "\n"
+        except Exception as e:
+            logger.error(f"Error parsing PDF: {e}")
+            return []
+            
+        return self.text_splitter.create_documents([text])
+        
+    def _process_csv(self, content: bytes) -> List[Document]:
+        """Parse CSV bytes into documents using Polars."""
+        try:
+            df = pl.read_csv(io.BytesIO(content))
+            text_data = []
+            for row in df.iter_rows(named=True):
+                row_str = "\n".join(f"{k}: {v}" for k, v in row.items() if v is not None)
+                text_data.append(row_str)
+            return self.text_splitter.create_documents(text_data)
+        except Exception as e:
+            logger.error(f"Error parsing CSV: {e}")
+            return []
+        
+    def _process_excel(self, content: bytes) -> List[Document]:
+        """Parse Excel bytes into documents using Polars."""
+        try:
+            df = pl.read_excel(io.BytesIO(content))
+            text_data = []
+            for row in df.iter_rows(named=True):
+                row_str = "\n".join(f"{k}: {v}" for k, v in row.items() if v is not None)
+                text_data.append(row_str)
+            return self.text_splitter.create_documents(text_data)
+        except Exception as e:
+            logger.error(f"Error parsing Excel: {e}")
+            return []
+        
+    def _process_text(self, content: bytes) -> List[Document]:
+        """Parse plain text/markdown bytes."""
+        try:
+            text = content.decode("utf-8", errors="ignore")
             return self.text_splitter.create_documents([text])
-        
-        def _process_csv(self, content: bytes) -> List[Document]:
-            """Parse CSV bytes into documents using Polars."""
-            try:
-                df = pl.read_csv(io.BytesIO(content))
-                text_data = []
-                for row in df.iter_rows(named=True):
-                    row_str = "\n".join(f"{k}: {v}" for k, v in row.items() if v is not None)
-                    text_data.append(row_str)
-                return self.text_splitter.create_documents(text_data)
-            except Exception as e:
-                logger.error(f"Error parsing CSV: {e}")
-                return []
-        
-        def _process_excel(self, content: bytes) -> List[Document]:
-            """Parse Excel bytes into documents using Polars."""
-            try:
-                df = pl.read_excel(io.BytesIO(content))
-                text_data = []
-                for row in df.iter_rows(named=True):
-                    row_str = "\n".join(f"{k}: {v}" for k, v in row.items() if v is not None)
-                    text_data.append(row_str)
-                return self.text_splitter.create_documents(text_data)
-            except Exception as e:
-                logger.error(f"Error parsing Excel: {e}")
-                return []
-        
-        def _process_text(self, content: bytes) -> List[Document]:
-            """Parse plain text/markdown bytes."""
-            try:
-                text = content.decode("utf-8", errors="ignore")
-                return self.text_splitter.create_documents([text])
-            except Exception as e:
-                logger.error(f"Error parsing text: {e}")
-                return []
-        
+        except Exception as e:
+            logger.error(f"Error parsing text: {e}")
+            return []
+    
