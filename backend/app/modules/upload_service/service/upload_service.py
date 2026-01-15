@@ -1,12 +1,12 @@
 import uuid
-from fastapi import UploadFile
+from fastapi import UploadFile, Depends
 from typing import AsyncGenerator
-from app.modules.utils.object_service import get_object_service
+from app.modules.utils.object_service import get_object_service, ObjectService
 from app.modules.upload_service.schema.upload_schema import UploadMeta, UploadFileResponse
 
 class UploadService:
-    def __init__(self):
-        self.object_service = get_object_service()
+    def __init__(self, object_service: ObjectService):
+        self.object_service = object_service
 
     async def _file_iterator(self, file: UploadFile, chunk_size: int = 10 * 1024 * 1024) -> AsyncGenerator[bytes, None]:
         """Async generator to yield file chunks."""
@@ -35,6 +35,5 @@ class UploadService:
 
 
 
-async def get_upload_service() -> UploadService:
-    upload_service = UploadService()
-    return upload_service
+async def get_upload_service(object_service: ObjectService = Depends(get_object_service)) -> UploadService:
+    return UploadService(object_service)
