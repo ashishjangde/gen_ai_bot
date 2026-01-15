@@ -1,6 +1,6 @@
 import asyncio
 import logging
-from typing import Optional, AsyncIterator, List
+from typing import Optional, AsyncIterator, List, AsyncGenerator
 from functools import lru_cache
 import httpx
 from boto3 import client
