@@ -30,12 +30,12 @@ class ReturnUserSchema(BaseModel):
     updated_at : datetime
 
 class LoginSchema(BaseModel):
-    email: EmailStr = Field(...)
-    password: str = Field(..., min_length=8, max_length=50)
+    email: EmailStr = Field(..., examples=["john.doe@example.com"])
+    password: str = Field(..., min_length=8, max_length=50, examples=["12345678@Abc"])
 
 
 class VerifySchema(BaseModel):
-    email: EmailStr = Field(...)
+    email: EmailStr = Field(..., examples=["john.doe@example.com"])
     verification_code: str = Field(..., min_length=6, max_length=6)
 
 class ResetPasswordSchema(BaseModel):
